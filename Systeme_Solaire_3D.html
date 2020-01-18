@@ -1,0 +1,872 @@
+<!doctype html>
+
+<html>
+
+<head>
+
+<style>
+
+#game_canvas
+{
+position:fixed;
+width:100vw;
+height:100vh;
+top:0vh;
+left:0vw;
+background-color:#800f;
+}
+#options_div
+{
+position:fixed;
+width:30vw;
+height:60vh;
+right:0vw;
+bottom:0vh;
+background-color: #7a35;
+color:white;
+font-size:20px;
+overflow-y: auto;
+}
+#options_div input
+{
+position:relative;
+width:20vw;
+height:10vh;
+left:5vw;
+background-color: #a375;
+border:1px solid black;
+color:white;
+}
+#options_div button
+{
+position:relative;
+width:20vw;
+height:10vh;
+left:5vw;
+background-color: #a375;
+border:1px solid black;
+color:white;
+}
+#fps_counter
+{
+position:fixed;
+width:10vw;
+height:10vh;
+top:0vh;
+left:45vw;
+background-color: #083f;
+color:white;
+font-size:50px;
+text-align:center;
+}
+
+</style>
+
+<title>SUPERJEU</title>
+
+</head>
+
+<body>
+
+<canvas id="game_canvas"></canvas>
+
+<div id="fps_counter">1000</div>
+
+<div id="options_div">
+<button id="play_pause_audio" onclick="lancer_audio()">Music</button>
+<input id="value_1" type="range" value="1" min="0" max="2" onchange="input_variables[this.id]=this.value;console.log(this.value);">value_1
+<input id="value_2" type="range" value="20" min="0" max="100" onchange="input_variables[this.id]=this.value;console.log(this.value);">value_2
+<input id="value_3" type="range" value="80" min="0" max="100" onchange="input_variables[this.id]=this.value;console.log(this.value);">value_3
+<input id="value_4" type="range" value="70" min="0" max="100" onchange="input_variables[this.id]=this.value;console.log(this.value);">value_4
+<input id="value_5" type="range" value="70" min="0" max="100" onchange="input_variables[this.id]=this.value;console.log(this.value);">value_5
+<input id="value_6" type="range" value="70" min="0" max="100" onchange="input_variables[this.id]=this.value;console.log(this.value);">value_6
+<input id="value_7" type="range" value="70" min="0" max="100" onchange="input_variables[this.id]=this.value;console.log(this.value);">value_7
+<input id="value_8" type="range" value="70" min="0" max="100" onchange="input_variables[this.id]=this.value;console.log(this.value);">value_8
+</div>
+
+</body>
+<script src="js/ImprovedNoise.js"></script>
+<script src="three/build/three.js"></script>
+<script src="js/SpaceControls.js"></script>
+<script src="three/examples/js/utils/SceneUtils.js"></script>
+<!-- <script src="js/ImprovedNoise.js"></script> -->
+
+
+
+<script type="text/javascript">
+
+  ////////VARIABLES GLOBALES OBLIGATOIRES////////
+
+  //REPRESENTE LE MONDE EN 3D
+  var scene = null;
+  //MON PERSONNAGE AUQUEL J'AJOUTE LES CONTROLS (PEUT ETRE MA CAMERA SI JE VEUX UN FPS)
+  var character = null;
+  //CAMERA
+  var camera = null;
+  //LE RENDERER DE THREEJS
+  var renderer = null;
+  //LES CONTROLS
+  var controls = null;
+  //LES LUMIERES DANS MA SCENE
+  var lights = [];
+  //UN TABLEAU QUI CONTIENDRA DES VARIABLES, QUE VOUS POUVEZ MODIFIER AVEC LES BOUTONS/INPUT EN BAS A DROITE DE L'ECRAN
+  var input_variables = [];
+  //LE TEMPS ENTRE DEUX AFFICHAGE
+  var delta_time = 0;
+  //L'HEURE DU DERNIER AFFICHAGE
+  var last_time = Date.now();
+  //RAYCASTER OUR CALCULER LES INTERSECTIONS
+  var raycaster = null;
+  //LES FPS
+  var fps = 0;
+  //UN TRUC QUE J'EXPLIQUE PLUS TARD
+  var pointerlockchange;
+  var pointerlockerror;
+  //LES OBJETS
+  var objects = [];
+  var terrain = null;
+  var planete = null;
+  var lune = null;
+  var soleil = null;
+  var terre_1 = null;
+  var champ = null;
+  var champ_t = null;
+  var champ_m = null;
+  var champ_v = null;
+  var champ_ma = null;
+  var champ_j = null;
+  var champ_pl = null;
+  var champ_u = null;
+  var champ_n = null;
+  var champ_p = null;
+  var mercure = null;
+  var venus = null;
+  var terre_1 = null;
+  var mars = null;
+  var planet_n1 = null;
+  var uranus = null;
+  var nepturne = null;
+  var pluton = null;
+  var planet_new = null;
+  var jupiter = null;
+  var list_orbit = [soleil,
+    mercure,
+    venus,
+    mars,
+    jupiter,
+    planet_n1,
+    uranus,
+    nepturne,
+    pluton];
+
+  
+  //ON VA SE SERVIR DE CA POUR GENERER DU BRUIT EN 1D/2D/3D
+  // var noise_xyz = ImprovedNoise();
+
+
+
+
+  //ICI ON LANCE LE CODE
+  init();
+  animation();
+
+
+
+
+  //FONCTION QU'ON LANCE EN PREMIER POUR INITIALISER NOS VARIABLES GLOBALES
+  function init(){
+//console.log('coucou')
+
+    //POUR BLOQUER LA SOURIS QUAND ON CLIQUE SUR L'ECRAN
+    //APPUYER SUR ECHAP POUR SORTIR DU POINTERLOCK
+    pointerlockConfiguration();
+
+    //ON CREE LA SCENE
+    scene = new THREE.Scene();
+
+    //ON CREE UNE CAMERA PERSPECTIVE (JE VOUS LAISSE VOUS RENSEIGNER)
+    camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.01, 10000);
+    
+    //On crée notre renderer WebGL
+    renderer = new THREE.WebGLRenderer({
+      canvas: document.getElementById("game_canvas"),
+      sortObjects: true,
+      antialias: true,
+      localClippingEnabled: false,  
+      powerPreference: "high-performance",
+      logarithmicDepthBuffer: true,
+      precision: "highp"
+    });
+    renderer.setPixelRatio(1.0);
+    renderer.setSize(window.innerWidth * 1.0, window.innerHeight * 1.0);
+    renderer.setClearColor(new THREE.Color(0xff0088ff), 0.0);
+
+    //ON AJOUTE LA CAMERA A LA SCENE
+    scene.add(camera);
+    //ON RECULE UN PEU LA CAMERA (INITIALEMENT, ELLE EST EN (0,0,0) (COMME TOUS LES OBJECTS D'AILLERUS) )
+    
+    // camera.position.x = 0
+    // camera.position.y = 0
+    // camera.position.z = 60000
+
+
+    //J'AJOUTE DE LA LUMIERE SUR LA CAMERA
+    //SI JE VOULAIS, JE POURRAI L'AJOUTER A LA SCENE: ELLE AURAIT UNE POSITION, QU'ON PEUT MODIFIER (light.position.x = 50;)
+    var light = new THREE.PointLight("white",4,5000,2);
+    camera.add(light);
+    lights.push(light);
+
+    //ON AJOUTE UNE LUMIERE AMBIANTE
+    var ambient_light = new THREE.AmbientLight(new THREE.Color(0xffffff), 0.38);
+    scene.add(ambient_light);
+    lights.push(ambient_light);
+
+    raycaster = new THREE.Raycaster();
+    
+    //LES CONTROLES: POUR LE MOMENT JE NE RENTRE PAS DANS LE DETAIL
+    var vectors_haut_bas_gauche_droite_avant_arriere = [];
+    var gravity_vector_avant = new THREE.Vector3(0, 0, +1);
+    var gravity_vector_arriere = new THREE.Vector3(0, 0, -1);
+    var gravity_vector_gauche = new THREE.Vector3(-1, 0, 0);
+    var gravity_vector_droite = new THREE.Vector3(+1, 0, 0);
+    var gravity_vector_haut = new THREE.Vector3(0, -1, 0);
+    var gravity_vector_bas = new THREE.Vector3(0, +1, 0);
+    vectors_haut_bas_gauche_droite_avant_arriere.push(gravity_vector_avant);
+    vectors_haut_bas_gauche_droite_avant_arriere.push(gravity_vector_arriere);
+    vectors_haut_bas_gauche_droite_avant_arriere.push(gravity_vector_bas);
+    vectors_haut_bas_gauche_droite_avant_arriere.push(gravity_vector_haut);
+    vectors_haut_bas_gauche_droite_avant_arriere.push(gravity_vector_droite);
+    vectors_haut_bas_gauche_droite_avant_arriere.push(gravity_vector_gauche);
+    character = camera;
+
+
+
+    controls = new SpaceControls( character, vectors_haut_bas_gauche_droite_avant_arriere );
+
+    //ON CREE UNE GEOMETRY
+    //POUR LE TERRAIN, ON PREND PLANEGEOMETRY, MAIS IL EN EXISTE BEAUCOUP D'AUTRES PROPOSEES PAR THREEJS
+    //VOUS POUVEZ MEME CREER VOTRE PROPRE GEOMETRY, EN PARTANT DE my_vertices = [], my_faces = [], ajouter des vertices et faces,
+    //PUIS A LA FIN FAIRE geometry.vertices = my_vertices; geometry.faces = my_faces;
+    var geometry = new THREE.PlaneGeometry(2000,2000,64,64);
+    //var geometry = new THREE.IcosahedronGeometry(200,2);
+    //var geometry = new THREE.BoxGeometry(1000,1000,1000,10,10,10);
+
+
+    //J'EXPLIQUERAI CA DEMAIN (MARDI)
+    geometry.computeFaceNormals();
+
+    //ON CREE UN MATERIAL
+    //IL EN EXISTE PLUSIEURS (ICI, RANGES DANS L'ORDRE DU PLUS SIMPLE AU PLUS COMPLEXE, MAIS COUTE PLUS DE TEMPS DE CALCUL)
+    //IL Y EN A QUI PEUVENT AVOIR DES TEXTURES, DES REFLETS, DE LA TRANSPARENCE, DU BUMPMAPPING, ETC...
+    //LE PLUS SIMPLE EST THREE.MeshBasicMaterial, qui ne réagit même pas à la lumière
+    //var material = new THREE.MeshBasicMaterial({wireframe: false, vertexColors: THREE.FaceColors, side: THREE.DoubleSide});
+    //var material = new THREE.MeshLambertMaterial({wireframe: false, vertexColors: THREE.FaceColors, side: THREE.DoubleSide});
+    //var material = new THREE.MeshPhongMaterial({wireframe: false, vertexColors: THREE.FaceColors, side: THREE.DoubleSide});
+    //var material = new THREE.MeshPhysicalMaterial({wireframe: false, vertexColors: THREE.FaceColors, side: THREE.DoubleSide});
+    //var material = new THREE.MeshStandardMaterial({wireframe: false, vertexColors: THREE.FaceColors, side: THREE.DoubleSide});
+    //var material = new THREE.MeshPhysicalMaterial({wireframe:face, color: "green", side: THREE.DoubleSide, });
+    
+    //ON CREE NOTRE TERRAIN, CONSTITUE D'UNE GEOMETRY ET D'UN MATERIAL
+    terrain = new THREE.Mesh(geometry,material);
+    // for (var i = 0; i < terrain.geometry.vertices.length; i++){
+    //     var v = terrain.geometry.vertices[i];
+    //     v.z = (Math.sin(v.x/200)+ Math.cos(v.y/750))*1000;
+    // }
+    //ON PEUT CREER UN OBJECT AVEC PLUSIEURS MATERIALS
+    //var materials = [material, new THREE.MeshBasicMaterial({wireframe: true, color:"white"})];
+    //terrain = THREE.SceneUtils.createMultiMaterialObject( geometry, materials );
+    //var noise_xyz = inpro
+    //ON AJOUTE LE TERRAIN DANS LA SCENE
+    //scene.add(terrain);
+
+    // planet_new = planet();
+    // scene.add(planet_new);
+    // planet_new.position.z = -10;
+
+    var new_comet = comet()
+    scene.add(new_comet);
+    new_comet.position.z = -50;
+    new_comet.position.x = 4000
+    new_comet.position.y = 5000
+
+
+    var new_etoile = etoile();
+    scene.add(new_etoile);
+    // var planet_n1 = planet();
+    // scene.add(planet_n1);
+    new_etoile.position.z = -100;
+    new_etoile.position.x = -3000
+    new_etoile.position.y = 3000
+
+    var steroide_new = steroide();
+    scene.add(steroide_new);
+    steroide_new.position.z = -50;
+    steroide_new.position.y = 4000;
+    steroide_new.position.x = 6000;
+    var univers_new = univers();
+    scene.add(univers_new);
+    univers_new.position.z = 0;
+    univers_new.position.x = 0;
+    univers_new.position.y = 0;
+    //univers_new.position.
+   // console.log("salut")
+
+    var material = 
+    new THREE.MeshBasicMaterial ({vertexColors: THREE.FaceColors, wireframe:true});
+    for(var i = 0 ; i < geometry.faces.length; i++){
+      var face = geometry.faces[i];
+      face.color = new THREE.Color(Math.random(),
+      Math.random(),
+      Math.random());
+  }
+  // for(var i = 0 ; )
+
+  var matRouge = new THREE.MeshBasicMaterial({color:"red"});
+  var matBleu = new THREE.MeshBasicMaterial({color:"blue"});
+  var matVert = new THREE.MeshBasicMaterial({color:"green"});
+  var materials = [matRouge,matBleu,matVert];
+  //var map = new THREE.Mesh(map_ge)
+  terrain = new THREE.Mesh(geometry,materials);
+  for(var i = 0; i < face.length; i++){
+    verFaces = face.length[i];
+    face.materialIndex = parseInt(Math.random()*3)
+  }
+
+
+  
+  // terrain = new THREE.Mesh(geometry,materials);
+  // for (var i = 0; i < geometry.vertices.length;i++){
+  //   var v = geometry.vertices[i];
+  //   v.z = noise_xyz.noise(v.x/400,v.y/400,0)*500;
+  // }
+  // var geometryPlanet= new THREE.IcosahedronGeometry(2000,2);
+  
+  //   for (var i = o ; i < geometryPlanet.vertices.length; ++i){
+  //     var v = vert[i];
+  //     v.multiplyScalar(1+ (noise_xyz.noise(v.x/1000,v.y/1000,v.z/1000))/2);
+  //   }
+  //   var planeter = scene.add(planeter);
+    //Load background texture
+      const loader = new THREE.TextureLoader();
+      loader.load('https://images.pexels.com/photos/1205301/pexels-photo-1205301.jpeg' , function(texture)
+            {
+             scene.background = texture;  
+            });
+
+            
+   }
+
+  // //FONCTION QU'ON VA APPELER EN BOUCLE POUR FAIRE FAIRE BOUGER NOS OBJETS, UPDATE LES CONTROLS ET AFFICHER LA SCENE
+  function animation(){
+
+    //LA FONCTION Date.now() NOUS DONNE LE TEMPS EN MILLISECONDES DEPUIS LE 01/01/1970
+    delta_time = Date.now() - last_time;
+    last_time = Date.now();
+    fps = parseInt(1000/delta_time);
+
+    //JE METS LES FPS DANS LA DIV "fps_counter"
+    document.getElementById("fps_counter").innerHTML = fps;
+
+    
+
+    //ON A FAIT TOUS LES CALCULS, ON PEUT DESSINER LA SCENE
+    update_character_controls( delta_time );    
+    
+      
+
+    //ON APPELLE LA FONCTION D'AFFICHAGE
+    render();
+
+    //ON DEMANDE AU NAVIGATEUR DE RAFRAICHIR LA FENETRE PUIS DE RELANCER "animation()"
+    requestAnimationFrame(animation);
+
+    if (camera.position.x > 1000){
+      (camera.position.x = 1000)
+    }
+
+    var z_autorise  = Math.sin()
+    for (var i = 0 ; i < objects.length;i++){
+    objects[i].rotation.y = Date.now()/1000;
+  }
+  
+  //for (var i = 0 ; i < objects.length;i++){}
+  var geometry = terrain.geometry
+  //console.log("terrain" + geometry.vertices);
+  for (var i = 0; i < terrain.geometry.faces.length; i++) {
+    var face = terrain.geometry.faces[i];
+    var v_a = terrain.geometry.vertices[face.a]
+    // new THREE.Color(Math.random(),Math.random(),Math.random());
+    if(v_a.x > ((Date.now()/1000)%1)*1000 
+    && v_a.x < ((Date.now()/1000)%1)*1100){
+      face.color = new THREE.Color("red");
+     }
+
+    else {
+      face.color = new THREE.Color("blue");
+    }
+   // face.color = new THREE.Color(Math.random(),Math.random(),Math.random());
+    
+  }
+  terrain.geometry.elementsNeedUpdate = true;
+
+  //camera.lookAt("je cherche ma possition");
+
+  // terre_1.rotation.z = 23.439281 * Math.PI / 180;
+  // lune.rotation.z = 23.439281 * Math.PI / 180;
+  // mercure.rotation.z = 0.01 * Math.PI / 180;
+  // venus.rotation.z = 177.3 * Math.PI / 180;
+  // mars.rotation.z = 25.19 * Math.PI / 180;
+  // jupiter.rotation.z = 3.13 * Math.PI / 180;
+  // planet_n1.rotation.z = 26.73 * Math.PI / 180;
+  // uranus.rotation.z = 97.77 * Math.PI / 180;
+  // nepturne.rotation.z = 28.32 * Math.PI / 180;
+
+  champ_t.position.x = soleil.position.x
+  champ_t.position.y = soleil.position.y
+  champ_t.position.z = 0
+
+  champ_m.position.x = soleil.position.x
+  champ_m.position.y = soleil.position.y
+  champ_m.position.z = 0
+
+  champ_v.position.x = soleil.position.x
+  champ_v.position.y = soleil.position.y
+  champ_v.position.z = 0
+  
+  champ_ma.position.x = soleil.position.x
+  champ_ma.position.y = soleil.position.y
+  champ_ma.position.z = 0
+
+  champ_j.position.x = soleil.position.x
+  champ_j.position.y = soleil.position.y
+  champ_j.position.z = 0
+
+  champ_pl.position.x = soleil.position.x
+  champ_pl.position.y = soleil.position.y
+  champ_pl.position.z = 0
+
+  champ_u.position.x = soleil.position.x
+  champ_u.position.y = soleil.position.y
+  champ_u.position.z = 0
+
+  champ_n.position.x = soleil.position.x
+  champ_n .position.y = soleil.position.y
+  champ_n.position.z = 0
+
+  champ_p.position.p = soleil.position.x
+  champ_p.position.y = soleil.position.y
+  champ_p.position.z = 0
+  
+
+  terre_1.position.x = Math.sin(-Date.now()/1000)*500;
+  terre_1.position.y = Math.cos(-Date.now()/1000)*500;
+  lune.position.x = terre_1.position.x
+  lune.position.y = terre_1.position.y
+  lune.position.x = Math.sin(-Date.now()/500)*300;
+  lune.position.y = Math.cos(-Date.now()/500)*300;
+
+  mercure.position.x = soleil.position.x
+  mercure.position.y = soleil.position.y
+  mercure.position.x = Math.sin(-Date.now()/1000)*800;
+  mercure.position.y = Math.cos(-Date.now()/1000)*800;
+
+  venus.position.x = soleil.position.x
+  venus.position.y = soleil.position.y
+  venus.position.x = Math.sin(-Date.now()/1500)*1000;
+  venus.position.y = Math.cos(-Date.now()/1500)*1000;
+
+  mars.position.x = soleil.position.x
+  mars.position.y = soleil.position.y
+  mars.position.x = Math.sin(-Date.now()/2000)*1400;
+  mars.position.y = Math.cos(-Date.now()/2000)*1400;
+
+  jupiter.position.x = soleil.position.x
+  jupiter.position.y = soleil.position.y
+  jupiter.position.x = Math.sin(-Date.now()/2400)*1700;
+  jupiter.position.y = Math.cos(-Date.now()/2400)*1700;
+  
+  planet_n1.position.x = soleil.position.x
+  planet_n1.position.y = soleil.position.y
+  planet_n1.position.x = Math.sin(-Date.now()/2700)*2000;
+  planet_n1.position.y = Math.cos(-Date.now()/2700)*2000;
+
+  uranus.position.x = soleil.position.x
+  uranus.position.y = soleil.position.y
+  uranus.position.x = Math.sin(-Date.now()/3600)*2400;
+  uranus.position.y = Math.cos(-Date.now()/3600)*2400;
+  
+  nepturne.position.x = soleil.position.x
+  nepturne.position.y = soleil.position.y
+  nepturne.position.x = Math.sin(-Date.now()/4200)*2800;
+  nepturne.position.y = Math.cos(-Date.now()/4200)*2800;
+
+  pluton.position.x = soleil.position.x
+  pluton.position.y = soleil.position.y
+  pluton.position.x = Math.sin(-Date.now()/4200)*3200;
+  pluton.position.y = Math.cos(-Date.now()/4200)*3200;
+
+  var distance_camera = 1000 + ((Math.sin(Date.now() / 1000) + 1) / 2) * 9000
+  //camera.position.x = soleil.position.x
+  //camera.position.y = soleil.position.y
+  //camera.position.x = Math.sin(-Date.now()/7700)*3000;
+  //camera.position.y = Math.cos(-Date.now()/7700)*distance_camera;
+  //camera.position.set(0,0,-1000);
+  //camera.lookAt(new THREE.Vector3(0,0,0));
+  //camera.up.set(0,0,1)
+  //camera.lookAt(new THREE.Vector3())
+
+  
+  //camera.lookAt(lune.position)
+  //planet_new.rotation.z = Date.now()/1000;
+  //lights.push(planet_new);
+  //planet_new.light();
+  //planet_new.rotation.z = Date.now()/1000;
+  //terre.position.y = Math.cos(-Date.now()/500)*2500;
+  }
+
+  
+
+
+  //FONCTION QUI PERMET DE DESSINER LA SCENE DANS LE CANVAS
+  function render(){
+    renderer.render(scene, camera);
+  }
+
+  // if (terrain != null){
+  //   for(var i=0; i<terrain.geometry.vertices.length; i++){
+  //       var v = terrain.geometry.vertices[i];
+  //       v.z = (Math.sin((v.x + Date.now())/100)+Math.cos((v.y+Date.now())*1.3/500)*1000)
+  //   }
+  //   terrain.geometry.verticesNeedUpdate = true;
+  //   }
+
+  //FONCTION APPELEE QUAND ON FAIT UN CLIC GAuCHE
+  function clic_gauche(){
+    console.log("clic gauche!!");
+    var intersections = trouver_object_en_face_camera();
+    if (intersections.length > 0){
+      for (var i = 0; i < intersections.length; i++){
+        console.log(intersections[i]); 
+        var intersection = intersections[i][0];
+        var object = intersection.object;
+        var faces = object.geometry.faces;
+        object.rotation.x += 0.02;
+        object.rotation.y += 0.04;
+        object.rotation.z += 0.03;
+        object.material.wireframe = !object.material.wireframe;
+        //LA FONCTION THREE.Vector3().multiplyScalar(nombre) multiplie le x,y et z du vecteur.
+        //Object.scale = (1,1,1) par défaut, et on peut faire grossir/maigrir l'object en changeant scale
+        //A utiliser avec parsimonie.
+        object.scale.multiplyScalar(1.1);
+      }
+    }
+  }
+
+
+
+  function trouver_object_en_face_camera(){
+    var objects_intersectes = [];
+
+    //ON PREPARE NOTRE RAYCASTER
+    var vecteur_direction_camera = new THREE.Vector3();
+
+    //ON LUI DONNE UNE ORIGINE (CELLE DE LA CAMERA)
+    raycaster.ray.origin.copy(camera.position);
+
+    //ON LUI DONNE UNE DIRECTION (CELLE DE LA CAMERA)
+    camera.getWorldDirection(vecteur_direction_camera);
+    raycaster.ray.direction.copy(vecteur_direction_camera);
+
+    //NEAR ET FAR REPRESENTE LA PLUS PETITE ET LA PLUS LONGUE DISTANCE DU RAYCASTER
+    raycaster.near = 0;
+    raycaster.far = 10000;
+
+    //ON PARCOURT TOUS NOS OBJECTS (DANS LE TABLEAU "OBJECTS"), ET ON TESTE POUR CHACUN S'IL EST EST INTERSECTE PAR LE RAYCASTER
+    for (var i = 0; i < objects.length; i++){
+      var object = objects[i];
+      var result_intersection = [];
+      object.raycast(raycaster,result_intersection);
+
+      //SI "result_intersection" CONTIENT QUELQUE CHOSE, C'EST PARCE QUE L'OBJECT EST INTERSECTE
+      //faites un console.log(result_intersection) pour voir ce qu'il y a dedans.
+      //result_intersection[0].object est l'object intersecté
+      //on a aussi result_intersection[0].distance, result_intersection[0].face, etc...
+      if (result_intersection.length > 0){
+        objects_intersectes.push(result_intersection);
+      }
+    }
+    return objects_intersectes;
+  }
+
+  function comet(){
+    var ma_comet = new THREE.Object3D();
+    var comet_geometry = new THREE.IcosahedronGeometry(400, 0,75);
+    var comet_material = new THREE.MeshBasicMaterial({color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25});
+      comet_material.map  = THREE.ImageUtils.loadTexture('images/Comete.jpg')
+    var comet = new THREE.Mesh( comet_geometry, comet_material );
+    ma_comet.add(comet);
+    return ma_comet;
+  }
+
+  function etoile(){
+    var mon_etoile = new THREE.Object3D();
+    var etoile_geometry = new THREE.IcosahedronGeometry(500, 0);
+    var etoile_material = new THREE.MeshBasicMaterial({color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25});
+      etoile_material.map  = THREE.ImageUtils.loadTexture('images/etoile.jpg')
+    var etoile = new THREE.Mesh( etoile_geometry, etoile_material );
+    
+    mon_etoile.add(etoile);
+    return mon_etoile;
+  }
+
+  function steroide(){
+    var mon_steroide = new THREE.Object3D();
+    var steroide_geometry = new THREE.IcosahedronGeometry(250, 0);
+    var steroide_material = new THREE.MeshBasicMaterial({color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25});
+    steroide_material.map  = THREE.ImageUtils.loadTexture('images/asteroide.jpg')
+    var steroide = new THREE.Mesh( steroide_geometry, steroide_material );
+    mon_steroide.add(steroide);
+    return mon_steroide;
+
+  }
+
+  function planet(){
+    var mon_object = new THREE.Object3D();
+
+    var geometry_saturne = new THREE.IcosahedronBufferGeometry(100,2);
+    var material_saturne = new THREE.MeshBasicMaterial({
+     // map: new THREE.TextureLoader("../images/1.jpg"),
+      color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25
+    });
+      material_saturne.map  = THREE.ImageUtils.loadTexture('images/saturnmap.jpg')
+      saturne = new THREE.Mesh(geometry_saturne,material_saturne);
+
+    // var terre_geometry = new THREE.IcosahedronGeometry(130,3);
+    // var terre_material = new THREE.MeshBasicMaterial({color:"green", wireframe:true});
+    //  terre = new THREE.Mesh(terre_geometry,terre_material);
+    var geometry = new THREE.RingGeometry( 120, 0.1, 32 );
+    var material = new THREE.MeshBasicMaterial({ color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25} );
+    material.map = THREE.ImageUtils.loadTexture('images/saturnringcolor.jpg')
+     champ = new THREE.Mesh( geometry, material );
+    
+    champ.position.x = 0
+    champ.position.y = 0
+    champ.position.z = 0
+    
+    mon_object.add(champ);
+    mon_object.add(saturne);
+    return mon_object;
+  }
+//++++++++++ pour reproduire un objets ici newplanet
+  function clic_gauche(){
+      var newplanet = planet();
+          newplanet.position.x = (0.5 - Math.random()*10000);
+         // y,z aussi 
+          // scene.add(newplanet);
+          // objects.push(newplanet);
+          // var newsteroide = steroide();
+          // newsteroide.position.x = (0.5 - Math.random()*10000);
+         // y,z aussi
+          //scene.add(newsteroide);
+          //objects.push(newsteroide);
+    }
+
+//+++++++++++ fonction pour effacer le doublon 
+function effacer(){
+  for (var i = 0 ; i < objects.length; i++){
+    scene.remove(objects[i]);
+  }
+  objects=[];
+}
+
+
+
+
+function univers(){
+  var nom_univers = new THREE.Object3D()
+  var geometry_soleil = new THREE .IcosahedronBufferGeometry(200,2);
+  var material_Soleil = new THREE.MeshBasicMaterial({color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25});
+  material_Soleil.map  = THREE.ImageUtils.loadTexture('images/sunmap.jpg')
+
+  // var light = new THREE.PointLight( 0xff0000, 1000,50000, 100 );
+  // light.position.set( 0, 0, 0 );
+  soleil = new THREE.Mesh(geometry_soleil,material_Soleil);
+  //soleil.add( light );
+  
+  var geometry_mercure = new THREE.IcosahedronBufferGeometry(100,2);
+  var material_mercure = new THREE.MeshBasicMaterial({
+     // map: new THREE.TextureLoader("../images/1.jpg"),
+      color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25
+    });
+      material_mercure.map  = THREE.ImageUtils.loadTexture('images/mercurymap.jpg')
+      mercure = new THREE.Mesh(geometry_mercure,material_mercure);
+  
+  var geometry_venus = new THREE.IcosahedronBufferGeometry(100,2);
+  var material_venus = new THREE.MeshBasicMaterial({
+     // map: new THREE.TextureLoader("../images/1.jpg"),
+      color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25
+    });
+      material_venus.map  = THREE.ImageUtils.loadTexture('images/venusmap.jpg')
+      venus = new THREE.Mesh(geometry_venus,material_venus);
+
+  var geometry_terre_1 = new THREE.IcosahedronBufferGeometry(100,2);
+  var material_terre_1 = new THREE.MeshBasicMaterial({
+     // map: new THREE.TextureLoader("../images/1.jpg"),
+      color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25
+    });
+      material_terre_1.map  = THREE.ImageUtils.loadTexture('images/earthmap1k.jpg')
+  terre_1 = new THREE.Mesh(geometry_terre_1,material_terre_1);
+
+  var geometry_mars = new THREE.IcosahedronBufferGeometry(100,2);
+  var material_mars = new THREE.MeshBasicMaterial({
+     // map: new THREE.TextureLoader("../images/1.jpg"),
+      color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25
+    });
+      material_mars.map  = THREE.ImageUtils.loadTexture('images/mars_1k_color.jpg')
+      mars = new THREE.Mesh(geometry_mars,material_mars);
+
+  var geometry_jupiter = new THREE.IcosahedronBufferGeometry(100,2);
+  var material_jupiter = new THREE.MeshBasicMaterial({
+     // map: new THREE.TextureLoader("../images/1.jpg"),
+      color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25
+    });
+      material_jupiter.map  = THREE.ImageUtils.loadTexture('images/jupitermap.jpg')
+      jupiter = new THREE.Mesh(geometry_jupiter,material_jupiter);
+
+  
+
+      planet_n1 = planet();
+      nom_univers.add(planet_n1);
+    planet_n1.position.z = -100;
+    planet_n1.position.x = -1000
+    planet_n1.position.y = 1000
+
+
+  var geometry_uranus = new THREE.IcosahedronBufferGeometry(100,2);
+  var material_uranus = new THREE.MeshBasicMaterial({
+     // map: new THREE.TextureLoader("../images/1.jpg"),
+      color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25
+    });
+      material_uranus.map  = THREE.ImageUtils.loadTexture('images/uranusmap.jpg')
+      uranus = new THREE.Mesh(geometry_uranus,material_uranus);
+
+  var geometry_nepturne = new THREE.IcosahedronBufferGeometry(100,2);
+  var material_nepturne = new THREE.MeshBasicMaterial({
+     // map: new THREE.TextureLoader("../images/1.jpg"),
+      color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25
+    });
+      material_nepturne.map  = THREE.ImageUtils.loadTexture('images/neptunemap.jpg')
+      nepturne = new THREE.Mesh(geometry_nepturne,material_nepturne);
+
+
+  var geometry_pluton = new THREE.IcosahedronBufferGeometry(100,2);
+  var material_pluton = new THREE.MeshBasicMaterial({
+     // map: new THREE.TextureLoader("../images/1.jpg"),
+      color: 0xaaaaaa,
+      specular: 0x333333,
+      shininess: 25
+    });
+      material_pluton.map  = THREE.ImageUtils.loadTexture('images/plutomap1k.jpg')
+      pluton = new THREE.Mesh(geometry_pluton,material_pluton);
+
+    var geometry_t = new THREE.RingGeometry( 500, 510, 32 );
+    var material_t = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide } );
+     champ_t = new THREE.Mesh( geometry_t, material_t );
+
+    var geometry_m = new THREE.RingGeometry( 800, 810, 32 );
+    var material_m = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide } );
+     champ_m = new THREE.Mesh( geometry_m, material_m );
+
+    var geometry_v = new THREE.RingGeometry( 1000, 1010, 32 );
+    var material_v = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide } );
+     champ_v = new THREE.Mesh( geometry_v, material_v);
+
+    var geometry_ma = new THREE.RingGeometry( 1500, 1510, 32 );
+    var material_ma = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide } );
+     champ_ma = new THREE.Mesh( geometry_ma, material_ma );
+
+    var geometry_j = new THREE.RingGeometry( 1700, 1710, 32 );
+    var material_j = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide } );
+     champ_j = new THREE.Mesh( geometry_j, material_j );
+
+    var geometry_pl = new THREE.RingGeometry( 2000, 2010, 32 );
+    var material_pl = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide } );
+     champ_pl = new THREE.Mesh( geometry_pl, material_pl );
+
+    var geometry_u = new THREE.RingGeometry( 2400, 2410, 32 );
+    var material_u = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide } );
+     champ_u = new THREE.Mesh( geometry_u, material_u );
+
+    var geometry_n = new THREE.RingGeometry( 2800, 2810, 32 );
+    var material_n = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide } );
+     champ_n = new THREE.Mesh( geometry_n, material_n );
+
+    var geometry_p = new THREE.RingGeometry( 3200, 3210, 32 );
+    var material_p = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide } );
+     champ_p = new THREE.Mesh( geometry_p, material_p );
+  
+  
+    
+  
+  var geometry_lune = new THREE.IcosahedronBufferGeometry(50,2);
+  var material_lune = new THREE.MeshBasicMaterial({color:"white"})
+  lune = new THREE.Mesh(geometry_lune,material_lune);
+
+  
+  nom_univers.add(soleil);
+  nom_univers.add(mercure);
+  nom_univers.add(venus);
+  nom_univers.add(terre_1);
+  nom_univers.add(mars);
+  nom_univers.add(planet_n1);
+  nom_univers.add(uranus);
+  nom_univers.add(nepturne);
+  nom_univers.add(pluton);
+  nom_univers.add(lune);
+  nom_univers.add(jupiter);
+  nom_univers.add(champ_t);
+  nom_univers.add(champ_m);
+  nom_univers.add(champ_v);
+  nom_univers.add(champ_ma);
+  nom_univers.add(champ_j);
+  nom_univers.add(champ_pl);
+  nom_univers.add(champ_u);
+  nom_univers.add(champ_n);
+  nom_univers.add(champ_p);
+  
+  return nom_univers;
+}
+
+// +++++++++++les animation
+// function animation(){
+  
+// }
+</script>
+
+</html>
